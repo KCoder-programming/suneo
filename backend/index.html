@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SUNEO</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #0A1F44;
+    --ink-soft: #1B356F;
+    --paper: #F4F6FB;
+    --white: #FFFFFF;
+    --signal: #FFC72C;
+    --route: #1646C8;
+    --sos: #C8102E;
+    --line: #C9D2E6;
+    --ok: #0B7A4B;
+    --font: "Atkinson Hyperlegible", "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--font);
+    font-size: 1.0625rem;
+    line-height: 1.5;
+  }
+  button, input { font: inherit; color: inherit; }
+  button { cursor: pointer; }
+  :focus-visible { outline: 4px solid var(--route); outline-offset: 3px; }
+  .on-dark :focus-visible { outline-color: var(--white); }
+  .tile:focus-visible { outline-color: var(--ink); }
+  .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+  /* ---------- top bar ---------- */
+  .top {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 14px 28px;
+    padding: 14px clamp(16px, 4vw, 40px);
+    background: var(--ink); color: var(--white);
+  }
+  .brand { display: flex; align-items: center; gap: 16px; flex: 1 1 340px; }
+  .plate {
+    background: var(--signal); color: var(--ink);
+    font-weight: 700; font-size: 1.9rem; letter-spacing: .06em; line-height: 1;
+    padding: 8px 14px 9px; border-radius: 10px;
+  }
+  .tagline { font-size: 1rem; max-width: 18ch; line-height: 1.25; color: #D6DEF5; }
+  .pills { display: flex; flex-wrap: wrap; gap: 8px; list-style: none; margin: 0; padding: 0; }
+  .pill {
+    display: inline-flex; align-items: center; gap: 8px;
+    border: 2px solid #3C5594; border-radius: 999px;
+    padding: 3px 12px; font-size: .95rem; white-space: nowrap;
+  }
+  .pill i { width: 10px; height: 10px; border-radius: 50%; background: #8A97BA; display: inline-block; }
+  .pill.good i { background: #3FD69A; }
+  .pill.warn i { background: var(--signal); }
+  .pill.bad  i { background: #FF6B7D; }
+  .prefs { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+  .seg { display: inline-flex; border: 2px solid #3C5594; border-radius: 999px; overflow: hidden; }
+  .seg button {
+    background: transparent; border: 0; padding: 5px 16px; color: var(--white); font-weight: 700;
+  }
+  .seg button[aria-pressed="true"] { background: var(--white); color: var(--ink); }
+  .switch { display: inline-flex; align-items: center; gap: 10px; cursor: pointer; }
+  .switch input { width: 22px; height: 22px; accent-color: var(--signal); }
+
+  /* ---------- main layout ---------- */
+  main {
+    display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(320px, 1fr);
+    gap: clamp(16px, 2.5vw, 32px);
+    padding: clamp(16px, 3vw, 36px) clamp(16px, 4vw, 40px);
+    max-width: 1500px; margin: 0 auto;
+  }
+  @media (max-width: 960px) { main { grid-template-columns: 1fr; } }
+
+  /* ---------- camera stage ---------- */
+  .stage {
+    position: relative; aspect-ratio: 4 / 3; max-height: 62vh; width: 100%;
+    background: #0B1226; border-radius: 14px; overflow: hidden;
+    border: 3px solid var(--ink);
+  }
+  .stage video, .stage img { width: 100%; height: 100%; object-fit: cover; display: none; }
+  .stage[data-mode="live"] video { display: block; }
+  .stage[data-mode="photo"] img { display: block; }
+  .stage-empty {
+    position: absolute; inset: 0; display: grid; place-items: center; text-align: center;
+    padding: 24px; color: #D6DEF5; font-size: 1.25rem;
+  }
+  .stage[data-mode="live"] .stage-empty, .stage[data-mode="photo"] .stage-empty { display: none; }
+  .stage-bar { display: flex; flex-wrap: wrap; gap: 10px; margin: 12px 0 18px; align-items: center; }
+  .btn {
+    background: var(--white); border: 2px solid var(--ink); border-radius: 10px;
+    padding: 9px 16px; font-weight: 700; color: var(--ink);
+  }
+  .btn:hover { background: #E8EDFB; }
+  .btn[aria-pressed="true"] { background: var(--ink); color: var(--white); }
+  .hint { margin: 0; color: #46557A; font-size: .95rem; }
+
+  /* ---------- big request tiles ---------- */
+  .tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+  @media (max-width: 720px) { .tiles { grid-template-columns: 1fr; } }
+  .tile {
+    position: relative; overflow: hidden; text-align: left;
+    min-height: 150px; padding: 18px 20px; border: 0; border-radius: 14px;
+    display: flex; flex-direction: column; justify-content: space-between; gap: 14px;
+    user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; touch-action: manipulation;
+  }
+  .tile:disabled { opacity: .55; cursor: progress; }
+  .tile-scene { background: var(--signal); color: var(--ink); }
+  .tile-ocr { background: var(--route); color: var(--white); }
+  .tile-sos   { background: var(--sos);    color: var(--white); touch-action: none; }
+  .tile-title { font-size: 1.55rem; font-weight: 700; line-height: 1.15; }
+  .tile-sub { font-size: .95rem; line-height: 1.3; }
+  .dots { display: flex; gap: 7px; }
+  .dots span { width: 16px; height: 16px; border-radius: 50%; background: currentColor; }
+  .tile-sos::after {
+    content: ""; position: absolute; left: 0; bottom: 0; height: 8px; width: calc(var(--p, 0) * 100%);
+    background: var(--white);
+  }
+
+  /* ---------- answer panel ---------- */
+  .answer {
+    background: var(--ink); color: var(--white); border-radius: 14px;
+    padding: clamp(18px, 2.5vw, 30px); display: flex; flex-direction: column; gap: 16px;
+    align-self: start; position: sticky; top: 16px; min-height: 340px;
+  }
+  @media (max-width: 960px) { .answer { position: static; } }
+  .answer h2 { margin: 0; font-size: 1.15rem; font-weight: 700; color: #D6DEF5; display: flex; align-items: center; gap: 14px; }
+  .wave { display: inline-flex; align-items: center; gap: 4px; height: 26px; }
+  .wave b { width: 5px; height: 6px; background: var(--signal); border-radius: 3px; display: block; }
+  .answer.speaking .wave b { animation: wave 0.9s ease-in-out infinite; }
+  .answer.speaking .wave b:nth-child(2) { animation-delay: .15s; }
+  .answer.speaking .wave b:nth-child(3) { animation-delay: .3s; }
+  .answer.speaking .wave b:nth-child(4) { animation-delay: .45s; }
+  .answer.speaking .wave b:nth-child(5) { animation-delay: .6s; }
+  @keyframes wave { 0%, 100% { height: 6px; } 50% { height: 26px; } }
+  @media (prefers-reduced-motion: reduce) {
+    .answer.speaking .wave b { animation: none; height: 18px; }
+  }
+  #answer { font-size: clamp(1.45rem, 2.4vw, 2.05rem); line-height: 1.3; margin: 0; max-width: 36ch; overflow-wrap: anywhere; white-space: pre-line; }
+  #answer.idle { color: #AEBBDD; font-size: 1.25rem; }
+  #answer.error { color: #FFB3BC; }
+  .answer-actions { display: flex; gap: 10px; margin-top: auto; flex-wrap: wrap; }
+  .answer .btn { background: transparent; color: var(--white); border-color: #5C74B5; }
+  .answer .btn:hover { background: var(--ink-soft); }
+
+  /* ---------- activity ---------- */
+  .activity { max-width: 1500px; margin: 0 auto; padding: 0 clamp(16px, 4vw, 40px) 48px; }
+  .activity h2 { font-size: 1.3rem; margin: 8px 0 12px; }
+  #history { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); }
+  .item-btn {
+    width: 100%; display: grid; grid-template-columns: 96px 1fr; gap: 14px; text-align: left;
+    background: var(--white); border: 2px solid var(--line); border-radius: 12px; padding: 10px;
+  }
+  .item-btn:hover { border-color: var(--ink); }
+  .item-btn img { width: 96px; height: 72px; object-fit: cover; border-radius: 8px; background: #0B1226; }
+  .item-meta { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 4px; font-size: .9rem; }
+  .tag { border-radius: 6px; padding: 1px 8px; font-weight: 700; }
+  .tag-cap { background: var(--ink); color: var(--white); }
+  .tag-web { background: #DCE4F8; color: var(--ink); }
+  .tag-click { border: 2px solid var(--ink); }
+  .item-time { margin-left: auto; color: #46557A; }
+  .item-text { margin: 0; font-size: 1rem; overflow-wrap: anywhere; white-space: pre-line; display: -webkit-box; line-clamp: 3; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+  .item-faces { margin: 5px 0 0; color: var(--ok); font-size: .9rem; overflow-wrap: anywhere; }
+  .item-text.pending { color: #46557A; font-style: italic; }
+  .empty { color: #46557A; margin: 0; }
+</style>
+</head>
+<body>
+
+<header class="top on-dark">
+  <div class="brand">
+    <span class="plate">SUNEO</span>
+    <span class="tagline">Smart User Navigation and Ear Output</span>
+  </div>
+  <ul class="pills" id="pills" aria-label="System status">
+    <li class="pill" id="pill-server"><i></i><span>Server</span></li>
+    <li class="pill" id="pill-groq"><i></i><span>Groq</span></li>
+    <li class="pill" id="pill-telegram"><i></i><span>Telegram</span></li>
+    <li class="pill" id="pill-cap"><i></i><span>Cap</span></li>
+    <li class="pill" id="pill-faces"><i></i><span>Faces</span></li>
+    <li class="pill" id="pill-currency"><i></i><span>Currency</span></li>
+    <li class="pill" id="pill-ocr"><i></i><span>OCR</span></li>
+  </ul>
+  <div class="prefs">
+    <div class="seg" role="group" aria-label="Language">
+      <button type="button" id="lang-en" aria-pressed="true" lang="en">English</button>
+      <button type="button" id="lang-hi" aria-pressed="false" lang="hi">हिन्दी</button>
+    </div>
+    <label class="switch"><input type="checkbox" id="auto-speak" checked><span data-i18n="sound">Read answers aloud</span></label>
+  </div>
+</header>
+
+<main>
+  <section aria-label="Camera and requests">
+    <div class="stage" id="stage" data-mode="none">
+      <video id="video" playsinline muted></video>
+      <img id="preview" alt="Selected photo">
+      <div class="stage-empty" data-i18n="stage_empty">Start the camera or choose a photo to begin.</div>
+    </div>
+    <div class="stage-bar">
+      <button type="button" class="btn" id="btn-cam" aria-pressed="false" data-i18n="cam_on">Start camera</button>
+      <button type="button" class="btn" id="btn-photo" data-i18n="choose">Choose a photo</button>
+      <input type="file" id="file" accept="image/*" capture="environment" hidden>
+      <p class="hint" id="cam-hint" role="status"></p>
+    </div>
+
+    <div class="tiles">
+      <button type="button" class="tile tile-scene" id="tile-groq">
+        <span class="dots" aria-hidden="true"><span></span></span>
+        <span>
+          <span class="tile-title" data-i18n="groq">Describe scene</span><br>
+          <span class="tile-sub" data-i18n="groq_sub">One click · Groq scene description</span>
+        </span>
+      </button>
+      <button type="button" class="tile tile-ocr" id="tile-local">
+        <span class="dots" aria-hidden="true"><span></span><span></span></span>
+        <span>
+          <span class="tile-title" data-i18n="local">Read and recognize</span><br>
+          <span class="tile-sub" data-i18n="local_sub">Two clicks · local faces, currency and text</span>
+        </span>
+      </button>
+      <button type="button" class="tile tile-sos" id="tile-sos">
+        <span class="dots" aria-hidden="true"><span></span><span></span><span></span></span>
+        <span>
+          <span class="tile-title" data-i18n="sos">Send SOS</span><br>
+          <span class="tile-sub" data-i18n="sos_sub">Hold for 1.5 seconds. Same as three clicks</span>
+        </span>
+      </button>
+    </div>
+
+  </section>
+
+  <section class="answer on-dark" id="answer-box" aria-labelledby="answer-h">
+    <h2 id="answer-h">
+      <span class="wave" aria-hidden="true"><b></b><b></b><b></b><b></b><b></b></span>
+      <span data-i18n="says">SUNEO says</span>
+    </h2>
+    <p id="answer" class="idle" aria-live="polite" data-i18n="idle">Choose a request below. The answer appears here and is read aloud.</p>
+    <div class="answer-actions">
+      <button type="button" class="btn" id="btn-replay" data-i18n="replay">Read again</button>
+      <button type="button" class="btn" id="btn-stop" data-i18n="stop">Stop</button>
+    </div>
+  </section>
+</main>
+
+<section class="activity" aria-labelledby="act-h">
+  <h2 id="act-h" data-i18n="activity">Recent activity</h2>
+  <ul id="history"></ul>
+</section>
+
+<canvas id="canvas" hidden></canvas>
+
+<script>
+(() => {
+  const $ = (s) => document.querySelector(s);
+
+  // ---------- translations ----------
+  const T = {
+    en: {
+      says: "SUNEO says", idle: "Choose a request below. The answer appears here and is read aloud.",
+      faces_ready: (n) => "Face recognition ready · " + n,
+      faces_add: "Add face photos",
+      faces_off: "Face recognition unavailable",
+      faces_found: "Local matches: ",
+      face_unknown: "Unknown face",
+      faces_error: "Local face recognition failed",
+      currency_ready: (n) => "Notes loaded · " + n,
+      currency_add: "Add note photos",
+      currency_off: "Currency recognition unavailable",
+      ocr_ready: "OCR.space ready",
+      ocr_off: "OCR.space key not set",
+      ocr_paused: "OCR paused for testing",
+      sos: "Send SOS", sos_sub: "Hold for 1.5 seconds. Same as three clicks",
+      cam_on: "Start camera", cam_off: "Stop camera", choose: "Choose a photo",
+      stage_empty: "Start the camera or choose a photo to begin.",
+      activity: "Recent activity", empty_act: "Nothing yet. Requests from this page and from the cap appear here.",
+      replay: "Read again", stop: "Stop", sound: "Read answers aloud",
+      working: "Working on it…", need_img: "Start the camera or choose a photo first.",
+      src_cap: "Cap", src_web: "This page", k_scene: "Scene", k_ocr: "Text", k_sos: "SOS",
+      no_cam: "Live camera needs localhost or https. Use Choose a photo instead.",
+      cam_denied: "Camera access was blocked. Allow it in the browser, or choose a photo.",
+      fail: "Could not reach the SUNEO server. Check that it is running.",
+      s_ok: "Server online", s_off: "Server offline",
+      groq_ready: "Groq configured", groq_off: "Groq API key not set",
+      telegram_ready: "Telegram SOS configured", telegram_off: "Telegram SOS not set",
+      groq: "Describe scene", groq_sub: "One click · Groq scene description",
+      local: "Read and recognize", local_sub: "Two clicks · local faces/currency + online OCR",
+      c_none: "Cap not seen yet", c_ago: (s) => "Cap seen " + s + "s ago", c_min: (m) => "Cap seen " + m + " min ago"
+    },
+    hi: {
+      says: "SUNEO कहता है", idle: "नीचे से कोई अनुरोध चुनें। जवाब यहाँ दिखेगा और बोलकर सुनाया जाएगा।",
+      faces_ready: (n) => "चेहरा पहचान तैयार · " + n,
+      faces_add: "चेहरे की फ़ोटो जोड़ें",
+      faces_off: "चेहरा पहचान उपलब्ध नहीं",
+      faces_found: "स्थानीय पहचान: ",
+      face_unknown: "अज्ञात चेहरा",
+      faces_error: "स्थानीय चेहरा पहचान विफल",
+      currency_ready: (n) => "नोट लोड · " + n,
+      currency_add: "नोट की फ़ोटो जोड़ें",
+      currency_off: "मुद्रा पहचान उपलब्ध नहीं",
+      ocr_ready: "OCR.space तैयार",
+      ocr_off: "OCR.space key सेट नहीं",
+      ocr_paused: "टेस्टिंग के लिए OCR रोका",
+      sos: "SOS भेजो", sos_sub: "1.5 सेकंड दबाए रखें। तीन क्लिक के बराबर",
+      cam_on: "कैमरा चालू करें", cam_off: "कैमरा बंद करें", choose: "फ़ोटो चुनें",
+      stage_empty: "शुरू करने के लिए कैमरा चालू करें या फ़ोटो चुनें।",
+      activity: "हाल की गतिविधि", empty_act: "अभी कुछ नहीं। इस पेज और कैप के अनुरोध यहाँ दिखेंगे।",
+      replay: "फिर से सुनें", stop: "रोकें", sound: "जवाब बोलकर सुनाएँ",
+      working: "काम हो रहा है…", need_img: "पहले कैमरा चालू करें या फ़ोटो चुनें।",
+      src_cap: "कैप", src_web: "यह पेज", k_scene: "दृश्य", k_ocr: "टेक्स्ट", k_sos: "SOS",
+      no_cam: "लाइव कैमरे के लिए localhost या https चाहिए। फ़ोटो चुनें।",
+      cam_denied: "कैमरा की अनुमति नहीं मिली। ब्राउज़र में अनुमति दें, या फ़ोटो चुनें।",
+      fail: "SUNEO सर्वर से संपर्क नहीं हो पाया। जाँचें कि वह चालू है।",
+      s_ok: "सर्वर चालू", s_off: "सर्वर बंद",
+      groq_ready: "Groq सेट है", groq_off: "Groq API key सेट नहीं",
+      telegram_ready: "Telegram SOS सेट है", telegram_off: "Telegram SOS सेट नहीं",
+      groq: "दृश्य बताएँ", groq_sub: "एक क्लिक · Groq से दृश्य विवरण",
+      local: "पढ़ें और पहचानें", local_sub: "दो क्लिक · स्थानीय चेहरा/नोट + ऑनलाइन OCR",
+      c_none: "कैप अभी नहीं दिखा", c_ago: (s) => "कैप " + s + " सेकंड पहले दिखा", c_min: (m) => "कैप " + m + " मिनट पहले दिखा"
+    }
+  };
+
+  let lang = "en";
+  let mode = "none";            // none | live | photo
+  let stream = null;
+  let photoBlob = null;
+  let busy = false;
+  let lastText = "";
+  const t = (k, ...a) => { const v = T[lang][k]; return typeof v === "function" ? v(...a) : v; };
+
+  // ---------- language ----------
+  function applyLang() {
+    document.documentElement.lang = lang;
+    document.querySelectorAll("[data-i18n]").forEach((el) => {
+      if (el.id === "answer" && !el.classList.contains("idle")) return;
+      el.textContent = t(el.dataset.i18n);
+    });
+    document.querySelectorAll("[data-i18n-ph]").forEach((el) => { el.placeholder = t(el.dataset.i18nPh); });
+    $("#btn-cam").textContent = stream ? t("cam_off") : t("cam_on");
+    $("#lang-en").setAttribute("aria-pressed", lang === "en");
+    $("#lang-hi").setAttribute("aria-pressed", lang === "hi");
+    renderPills(lastStatus);
+    renderHistory(lastHistory, true);
+  }
+  $("#lang-en").onclick = () => { lang = "en"; applyLang(); };
+  $("#lang-hi").onclick = () => { lang = "hi"; applyLang(); };
+
+  // ---------- speech ----------
+  function pickVoice() {
+    const prefix = lang === "hi" ? "hi" : "en";
+    const voices = speechSynthesis.getVoices();
+    return voices.find((v) => v.lang.toLowerCase().startsWith(prefix + "-in")) ||
+           voices.find((v) => v.lang.toLowerCase().startsWith(prefix)) || null;
+  }
+  function speak(text) {
+    if (!("speechSynthesis" in window) || !text) return;
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = lang === "hi" ? "hi-IN" : "en-IN";
+    const v = pickVoice(); if (v) u.voice = v;
+    u.onstart = () => $("#answer-box").classList.add("speaking");
+    u.onend = u.onerror = () => $("#answer-box").classList.remove("speaking");
+    speechSynthesis.speak(u);
+  }
+  $("#btn-replay").onclick = () => speak(lastText);
+  $("#btn-stop").onclick = () => { speechSynthesis.cancel(); $("#answer-box").classList.remove("speaking"); };
+
+  function showAnswer(text, kind) {
+    const a = $("#answer");
+    a.classList.remove("idle", "error");
+    if (kind) a.classList.add(kind);
+    a.textContent = text;
+    if (kind !== "error") lastText = text;
+    // on phones the answer panel sits below the tiles, so bring it into view
+    if (window.matchMedia("(max-width: 960px)").matches) {
+      $("#answer-box").scrollIntoView({ block: "nearest", behavior: "smooth" });
+    }
+  }
+
+  // ---------- camera / photo ----------
+  function setMode(m) { mode = m; $("#stage").dataset.mode = m; }
+
+  async function startCamera() {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      $("#cam-hint").textContent = t("no_cam"); return;
+    }
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment", width: { ideal: 1280 } }, audio: false });
+      $("#video").srcObject = stream;
+      await $("#video").play();
+      setMode("live");
+      $("#btn-cam").setAttribute("aria-pressed", "true");
+      $("#btn-cam").textContent = t("cam_off");
+      $("#cam-hint").textContent = "";
+    } catch (e) {
+      $("#cam-hint").textContent = t("cam_denied");
+    }
+  }
+  function stopCamera() {
+    if (stream) stream.getTracks().forEach((tr) => tr.stop());
+    stream = null;
+    $("#video").srcObject = null;
+    setMode(photoBlob ? "photo" : "none");
+    $("#btn-cam").setAttribute("aria-pressed", "false");
+    $("#btn-cam").textContent = t("cam_on");
+  }
+  $("#btn-cam").onclick = () => (stream ? stopCamera() : startCamera());
+  $("#btn-photo").onclick = () => $("#file").click();
+  $("#file").onchange = (e) => {
+    const f = e.target.files[0];
+    if (!f) return;
+    photoBlob = f;
+    $("#preview").src = URL.createObjectURL(f);
+    if (stream) stopCamera();
+    setMode("photo");
+    $("#cam-hint").textContent = "";
+    e.target.value = "";
+  };
+
+  function grabImage() {
+    return new Promise((resolve) => {
+      if (mode === "live") {
+        const v = $("#video"), c = $("#canvas");
+        const scale = Math.min(1, 1024 / (v.videoWidth || 1024));
+        c.width = Math.round(v.videoWidth * scale);
+        c.height = Math.round(v.videoHeight * scale);
+        c.getContext("2d").drawImage(v, 0, 0, c.width, c.height);
+        c.toBlob((b) => resolve(b), "image/jpeg", 0.85);
+      } else if (mode === "photo" && photoBlob) {
+        resolve(photoBlob);
+      } else {
+        resolve(null);
+      }
+    });
+  }
+
+  // ---------- send a request ----------
+  function getLocation() {
+    return new Promise((resolve) => {
+      if (!navigator.geolocation) return resolve(null);
+      navigator.geolocation.getCurrentPosition(
+        (p) => resolve({ lat: p.coords.latitude, lng: p.coords.longitude }),
+        () => resolve(null),
+        { timeout: 4000, maximumAge: 60000 }
+      );
+    });
+  }
+
+  function setBusy(b) {
+    busy = b;
+    document.querySelectorAll(".tile").forEach((el) => { el.disabled = b; });
+  }
+
+  async function send(click) {
+    if (busy) return;
+    const blob = await grabImage();
+    if (!blob) { showAnswer(t("need_img"), "error"); return; }
+
+    setBusy(true);
+    showAnswer(t("working"));
+    try {
+      const fd = new FormData();
+      fd.append("image", blob, "web.jpg");
+      fd.append("click_type", click);
+      fd.append("device_id", "web-1");
+      fd.append("lang", lang);
+      if (click === "sos") {
+        const loc = await getLocation();
+        if (loc) { fd.append("lat", loc.lat); fd.append("lng", loc.lng); }
+      }
+      const r = await fetch("/capture", { method: "POST", body: fd });
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.error || "error");
+      showAnswer(data.text, data.status === "error" ? "error" : undefined);
+      if ($("#auto-speak").checked) speak(data.text);
+      refreshHistory();
+    } catch (e) {
+      showAnswer(t("fail"), "error");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  $("#tile-groq").onclick = () => send("scene");
+  $("#tile-local").onclick = () => send("ocr");
+
+  // ---------- SOS: press and hold ----------
+  const HOLD_MS = 1500;
+  let holdStart = 0, holdRaf = 0, holding = false;
+  const sosTile = $("#tile-sos");
+
+  function holdTick() {
+    if (!holding) return;
+    const p = Math.min(1, (performance.now() - holdStart) / HOLD_MS);
+    sosTile.style.setProperty("--p", p);
+    if (p >= 1) { cancelHold(); send("sos"); return; }
+    holdRaf = requestAnimationFrame(holdTick);
+  }
+  function beginHold() {
+    if (holding || busy) return;
+    holding = true; holdStart = performance.now();
+    holdRaf = requestAnimationFrame(holdTick);
+  }
+  function cancelHold() {
+    holding = false;
+    cancelAnimationFrame(holdRaf);
+    sosTile.style.setProperty("--p", 0);
+  }
+  sosTile.addEventListener("pointerdown", (e) => { e.preventDefault(); beginHold(); });
+  ["pointerup", "pointerleave", "pointercancel"].forEach((ev) => sosTile.addEventListener(ev, cancelHold));
+  sosTile.addEventListener("contextmenu", (e) => e.preventDefault());
+  sosTile.addEventListener("keydown", (e) => {
+    if (e.key === " " || e.key === "Enter") { e.preventDefault(); if (!e.repeat) beginHold(); }
+  });
+  sosTile.addEventListener("keyup", (e) => { if (e.key === " " || e.key === "Enter") cancelHold(); });
+
+  // Keyboard shortcuts mirror the cap: 1 for Groq, 2 for local analysis, hold 3 for SOS.
+  document.addEventListener("keydown", (e) => {
+    if (e.target.matches("input, textarea") || e.ctrlKey || e.metaKey || e.altKey) return;
+    if (e.key === "1") send("scene");
+    else if (e.key === "2") send("ocr");
+    else if (e.key === "3" && !e.repeat) beginHold();
+  });
+  document.addEventListener("keyup", (e) => { if (e.key === "3") cancelHold(); });
+
+  // ---------- status + history polling ----------
+  let lastStatus = null, lastHistory = [], lastHistoryJson = "";
+
+  function pill(id, cls, text) {
+    const el = $(id);
+    el.className = "pill " + cls;
+    el.querySelector("span").textContent = text;
+  }
+  function renderPills(s) {
+    if (!s) {
+      pill("#pill-server", "bad", t("s_off"));
+      pill("#pill-groq", "", t("groq_off"));
+      pill("#pill-telegram", "", t("telegram_off"));
+      pill("#pill-cap", "", t("c_none"));
+      pill("#pill-faces", "", t("faces_off"));
+      pill("#pill-currency", "", t("currency_off"));
+      pill("#pill-ocr", "", t("ocr_off"));
+      return;
+    }
+    pill("#pill-server", "good", t("s_ok"));
+    pill("#pill-groq", s.groq_configured ? "good" : "warn", s.groq_configured ? t("groq_ready") : t("groq_off"));
+    pill("#pill-telegram", s.telegram_configured ? "good" : "warn", s.telegram_configured ? t("telegram_ready") : t("telegram_off"));
+    const c = s.cap_seconds_ago;
+    if (c === null || c === undefined) pill("#pill-cap", "warn", t("c_none"));
+    else pill("#pill-cap", "good", c < 90 ? t("c_ago", c) : t("c_min", Math.round(c / 60)));
+    if (!s.face_recognition_available || s.face_recognition_error) {
+      pill("#pill-faces", "bad", t("faces_off"));
+    } else if (s.face_recognition_ready) {
+      pill("#pill-faces", "good", t("faces_ready", s.known_people_count));
+    } else {
+      pill("#pill-faces", "warn", t("faces_add"));
+    }
+    if (!s.currency_recognition_available || s.currency_recognition_error) {
+      pill("#pill-currency", "bad", t("currency_off"));
+    } else if (s.currency_recognition_ready) {
+      pill("#pill-currency", "good", t("currency_ready", s.known_currency_count));
+    } else {
+      pill("#pill-currency", "warn", t("currency_add"));
+    }
+    if (s.ocr_disabled_for_testing) {
+      pill("#pill-ocr", "warn", t("ocr_paused"));
+    } else {
+      pill("#pill-ocr", s.ocr_available ? "good" : "bad", s.ocr_available ? t("ocr_ready") : t("ocr_off"));
+    }
+  }
+  async function refreshStatus() {
+    try { lastStatus = await (await fetch("/api/status")).json(); } catch (e) { lastStatus = null; }
+    renderPills(lastStatus);
+  }
+
+  function renderHistory(items, force) {
+    const json = JSON.stringify(items) + lang;
+    if (!force && json === lastHistoryJson) return;
+    lastHistoryJson = json;
+    const ul = $("#history");
+    ul.replaceChildren();
+    if (!items.length) {
+      const li = document.createElement("li");
+      const p = document.createElement("p");
+      p.className = "empty"; p.textContent = t("empty_act");
+      li.appendChild(p); ul.appendChild(li); return;
+    }
+    items.forEach((it) => {
+      const li = document.createElement("li");
+      const b = document.createElement("button");
+      b.type = "button"; b.className = "item-btn";
+
+      const img = document.createElement("img");
+      img.src = it.image; img.alt = ""; img.loading = "lazy";
+
+      const body = document.createElement("div");
+      const meta = document.createElement("div"); meta.className = "item-meta";
+      const s1 = document.createElement("span"); s1.className = "tag " + (it.source === "cap" ? "tag-cap" : "tag-web");
+      s1.textContent = it.source === "cap" ? t("src_cap") : t("src_web");
+      const s2 = document.createElement("span"); s2.className = "tag tag-click";
+      s2.textContent = t("k_" + it.click_type) + (it.focus ? " · " + it.focus : "");
+      const s3 = document.createElement("span"); s3.className = "item-time"; s3.textContent = it.time;
+      meta.append(s1, s2, s3);
+
+      const p = document.createElement("p");
+      p.className = "item-text" + (it.status === "processing" ? " pending" : "");
+      p.textContent = it.status === "processing" ? t("working") : it.text;
+
+      body.append(meta, p);
+      if (it.faces?.length) {
+        const faceSummary = document.createElement("p");
+        faceSummary.className = "item-faces";
+        const names = it.faces.map((face) => face.name === "unknown" ? t("face_unknown") : face.name);
+        faceSummary.textContent = t("faces_found") + names.join(", ");
+        body.appendChild(faceSummary);
+      } else if (it.face_error) {
+        const faceError = document.createElement("p");
+        faceError.className = "item-faces";
+        faceError.textContent = t("faces_error");
+        body.appendChild(faceError);
+      }
+      b.append(img, body);
+      b.onclick = () => { if (it.text) { showAnswer(it.text); speak(it.text); } };
+      li.appendChild(b); ul.appendChild(li);
+    });
+  }
+  async function refreshHistory() {
+    try { lastHistory = await (await fetch("/api/history")).json(); } catch (e) { return; }
+    renderHistory(lastHistory, false);
+  }
+
+  if ("speechSynthesis" in window) speechSynthesis.onvoiceschanged = () => {};
+  applyLang();
+  refreshStatus(); refreshHistory();
+  setInterval(refreshStatus, 5000);
+  setInterval(refreshHistory, 2500);
+})();
+</script>
+</body>
+</html>
