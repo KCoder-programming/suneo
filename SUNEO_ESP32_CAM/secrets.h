@@ -1,0 +1,5 @@
+#pragma once
+
+#define SUNEO_WIFI_SSID "YOUR_WIFI_NAME"
+#define SUNEO_WIFI_PASS "YOUR_WIFI_PASSWORD"
+#define SUNEO_SERVER_URL "http://YOUR_LAPTOP_IP:5000/capture"
