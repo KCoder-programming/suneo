@@ -1,0 +1,9 @@
+.env
+.env.*
+!.env.example
+captures/
+known_faces/
+__pycache__/
+*.pyc
+.venv/
+venv/
