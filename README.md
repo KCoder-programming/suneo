@@ -90,4 +90,4 @@ Built by Team Alpha Force for Google GDG Udaipur's Aravalli Build Championship.
 
 ## License
 
-No license has been selected yet. Choose one before distributing this project.
+No license.
