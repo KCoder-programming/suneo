@@ -86,7 +86,14 @@ This is a prototype, not a production service. Do not expose the server to the
 public internet. Keep API keys, Wi-Fi credentials, and other secrets out of
 commits; use the provided example files for configuration.
 
+## Screenshots
+<img height="400" alt="Screenshot_20261106-171036~2" src="https://github.com/user-attachments/assets/c0a8888e-c5d9-4c2f-bb70-a7c77d163005" />
+<img height="400" alt="_home_kavya_Downloads_suneo-0 1 0_backend_index html" src="https://github.com/user-attachments/assets/18331d2d-3355-4be1-85b3-674ccab441b5" />
+
+---
 Built by Team Alpha Force for Google GDG Udaipur's Aravalli Build Championship.
+
+---
 
 ## License
 
